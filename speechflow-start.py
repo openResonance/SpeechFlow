@@ -254,9 +254,9 @@ def synthesize(tts, text, voice, archive, use_mpv):
             proc.terminate()
 
     if success and n:
-        print(f"Fertig: {samples / sr:.1f} s Audio → {archive}")
+        print(f"✅ Fertig: {samples / sr:.1f} s Audio → {archive}")
     if use_mpv and success:
-        print("mpv-Fenster bleibt offen (schließen mit q). "
+        print("🔊 mpv-Fenster bleibt offen (schließen mit q). "
               "Neu anhören: Archivdatei abspielen.")
 
 
@@ -286,9 +286,10 @@ def main():
     archive_dir.mkdir(parents=True, exist_ok=True)
     archive = archive_dir / f"{time.strftime('%Y-%m-%d_%H-%M-%S')}_{lang}.wav"
 
+    print("🎬 SpeechFlow – los geht's!")
     print(f"Modell:  {model}")
     print(f"Sprache: {lang}   Stimme: {voice or '(Modell-Standard)'}")
-    print("Beim ersten Lauf werden Modell und Stimmen geladen (~80 MB).")
+    print("⬇️  Beim ersten Lauf werden Modell und Stimmen geladen (~80 MB).")
     import ptts
     try:
         tts = ptts.TTS(model, lang=lang, quant=cfg["QUANT"])

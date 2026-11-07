@@ -95,8 +95,8 @@ eigenen Paketmanager, dann `uv` über den
 uv run speechflow-start.py
 ```
 
-Beim **ersten Lauf** werden Pakete (~100 MB) und das Modell (~80 MB, q8)
-geladen – danach läuft alles offline. Die fertige WAV-Datei landet in
+Beim **ersten Lauf** werden einmalig ~80 MB geladen (Pakete + Modell, q8) –
+danach läuft alles offline. Die fertige WAV-Datei landet in
 `~/text-to-sound-recordings/`, z. B. `2026-11-07_00-09-11_de.wav`.
 
 Oder die Helfer nutzen: `./start.sh` (Terminal) · `START-HERE.txt`
