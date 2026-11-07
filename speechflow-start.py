@@ -34,6 +34,38 @@ from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 CONF_FILE = SCRIPT_DIR / "speechflow.conf"
+LOG_FILE = SCRIPT_DIR / "speechflow-last-run.log"
+LOG_MAX_BYTES = 64 * 1024        # harte Grenze: 64 KB
+LOG_KEEP_LINES = 200             # beim Kürzen übrig lassen
+
+
+def log(msg):
+    """Diagnose-Log: zeigt, wo der Lauf gestartet/abgebrochen ist.
+
+    Die Datei ist auf LOG_MAX_BYTES begrenzt – beim Überschreiten werden
+    die ältesten Zeilen verworfen, es wächst nie unbegrenzt.
+    """
+    try:
+        if (LOG_FILE.exists()
+                and LOG_FILE.stat().st_size > LOG_MAX_BYTES):
+            old = LOG_FILE.read_text(encoding="utf-8",
+                                     errors="replace").splitlines()
+            LOG_FILE.write_text("\n".join(old[-LOG_KEEP_LINES:]) + "\n",
+                                encoding="utf-8")
+        with LOG_FILE.open("a", encoding="utf-8") as f:
+            f.write(f"{time.strftime('%Y-%m-%d %H-%M-%S')} {msg}\n")
+    except OSError:
+        pass
+
+
+# Sehr früh: beweist, dass das Skript überhaupt gestartet wurde.
+log(f"Skript geladen (argv={sys.argv[1:]!r})")
+# Zeilenweise Pufferung – Ausgabe erscheint sofort, auch in Pipes/Desktop.
+try:
+    sys.stdout.reconfigure(line_buffering=True)
+    sys.stderr.reconfigure(line_buffering=True)
+except Exception:
+    pass
 
 DEFAULTS = {
     "MODEL": "",
@@ -75,6 +107,7 @@ def last_active(values, plural, key):
     """Bei mehreren aktiven Einträgen warnen und den letzten verwenden."""
     if len(values) <= 1:
         return values[0] if values else ""
+    log(f"Warnung: {len(values)} {plural} aktiv -> weiter mit {values[-1]!r}")
     print(f"\n⚠️  Achtung: {len(values)} {plural} aktiv in speechflow.conf:")
     for v in values:
         print(f"      - {v}")
@@ -117,6 +150,7 @@ def read_clipboard():
 
 
 def notify(msg):
+    log(f"notify: {msg}")
     if shutil.which("notify-send"):
         subprocess.run(
             ["notify-send", "--app-name=SpeechFlow", "SpeechFlow", str(msg)],
@@ -143,6 +177,8 @@ def model_page_url(model):
 def report_gated(model, err):
     """Modellseite im Browser öffnen + freundliche Meldung ausgeben."""
     url = model_page_url(model)
+    log(f"gated erkannt: {model} url={url} "
+        f"xdg-open={'ja' if shutil.which('xdg-open') else 'FEHLT'}")
     print("\n🔐🌐📖  Das Modell ist geschützt (gated) – einmalig freischalten:")
     if url:
         print(f"   1. Im Browser öffnet sich: {url}")
@@ -289,7 +325,9 @@ def synthesize(tts, text, voice, archive, use_mpv):
 def main():
     args = parse_args()
     cfg = load_conf()
+    log("Text wird ermittelt …")
     text = resolve_text(args)
+    log(f"Text: {len(text)} Zeichen")
 
     model = args.model or last_active(cfg["MODELS"], "Modelle", "MODEL")
     if not model:
@@ -316,13 +354,16 @@ def main():
     print(f"Sprache: {lang}   Stimme: {voice or '(Modell-Standard)'}")
     print("⬇️  Beim ersten Lauf werden Modell und Stimmen geladen (~80 MB).")
     import ptts
+    log("ptts.TTS wird erstellt …")
     try:
         tts = ptts.TTS(model, lang=lang, quant=cfg["QUANT"])
     except Exception as e:
+        log(f"ptts.TTS Fehler: {type(e).__name__}: {e}")
         if is_gated_error(e):
             report_gated(model, e)
             sys.exit(1)
         raise
+    log("ptts.TTS bereit – Synthese startet")
     print(f"Archiv:  {archive}")
     synthesize(tts, text, voice, archive, use_mpv=not args.no_mpv)
 
@@ -331,9 +372,11 @@ if __name__ == "__main__":
     try:
         main()
     except KeyboardInterrupt:
+        log("Abgebrochen (KeyboardInterrupt)")
         print("\nAbgebrochen.")
         sys.exit(130)
     except Exception as e:  # noqa: BLE001 – Desktop startet ohne Terminal
+        log(f"FEHLER (global): {type(e).__name__}: {e}")
         print(f"FEHLER: {e}", file=sys.stderr)
         notify(f"Vorlesen fehlgeschlagen: {e}")
         sys.exit(1)
