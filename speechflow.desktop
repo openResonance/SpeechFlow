@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=SpeechFlow
+GenericName=Text to speech (offline)
+Comment=Read the clipboard aloud with Phonon TTS – offline, with WAV archive
+# Adjust Exec= to where speechflow-start.py lives:
+Exec=sh -c "cd '/home/auferstandene/phonon-vorlesen-rohtest' && uv run ./speechflow-start.py"
+Icon=audio-speakers
+Terminal=false
+Categories=AudioVideo;Audio;
+Keywords=TTS;speech;Phonon;text-to-speech;offline;read aloud;
+StartupNotify=true

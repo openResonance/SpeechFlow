@@ -1,0 +1,14 @@
+MIT OR Apache-2.0
+
+The code in this repository (speechflow-start.py, start.sh,
+speechflow.desktop, and the files in this repository) is dual-licensed:
+you may use it under the terms of the MIT License (LICENSE-MIT) or the
+Apache License 2.0 (LICENSE-APACHE), at your option.
+
+    SPDX-License-Identifier: MIT OR Apache-2.0
+
+Model weights and voices are distributed separately and have their own
+terms. Phonon 31m is under Apache 2.0, and Phonon 40m and Phonon 40m
+multilingual are under CC BY-NC 4.0 (non-commercial use only). Check each
+model's page on Hugging Face before redistribution. See:
+https://github.com/gradium-ai/xn-ptts#license

@@ -1,0 +1,29 @@
+SPEECHFLOW – FIRST RUN (erster Start)
+======================================
+
+This folder contains everything. No installation needed except `uv` and `mpv`.
+(Alles in einem Ordner. Außer `uv` und `mpv` brauchst du nichts zu installieren.)
+
+1. Open a terminal IN THIS FOLDER (Terminal im Ordner öffnen):
+   - File manager: right-click → "Open in Terminal"
+     (Dateimanager: Rechtsklick → "Hier Terminal öffnen")
+
+2. Run / eingeben:
+
+       uv run speechflow-start.py
+
+3. First run only (nur beim allerersten Mal):
+   - The Phonon model is gated: a browser window opens the model page.
+     Confirm the button at the top ("Agree and access repository"),
+     then log in once:
+       uvx --from huggingface_hub hf auth login
+     (Modell ist geschützt: Browser öffnet Modellseite – Button oben
+      unter der Überschrift bestätigen, dann einmal einloggen.)
+   - Packages and model are downloaded once (~180 MB), then everything
+     runs offline.
+     (Pakete + Modell werden einmal geladen, danach alles offline.)
+
+4. Copy any text (Strg+C) and run step 2 again. Listening starts immediately.
+   (Text kopieren, Schritt 2 wiederholen – das Vorlesen startet sofort.)
+
+Details: README.de.md (Deutsch) · README.md (English)
