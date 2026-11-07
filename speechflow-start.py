@@ -8,19 +8,22 @@
 Aufruf (ohne venv, uv holt sich alles selbst):
     uv run speechflow-start.py           # Text aus der Zwischenablage
     uv run speechflow-start.py "Hallo"   # Text direkt mitgeben
-    uv run speechflow-start.py --lang en --voice "" "Hello there."
     uv run speechflow-start.py --no-mpv  # nur WAV archivieren
+
+Sprache, Modell und Stimme kommen aus speechflow.conf – die Sprache
+leitet das Skript automatisch aus dem Modellnamen ab (z.B. ...-de -> de).
+Genau EIN Modell und höchstens EINE Stimme aktivieren (Raute entfernen).
 
 Der ganze Text wird in EINEM stream() durchlaufen (natürlicher Sprachfluss,
 kein Satz-für-Sat-Reset). Die PCM-Frames gehen gleichzeitig an mpv (über
 eine FIFO-Pipe, Wiedergabe startet sofort) und an eine Archiv-WAV-Datei.
-Einstellungen: speechflow.conf neben diesem Skript.
 Basis: https://github.com/gradium-ai/xn-ptts (ptts-Python-Paket)
 """
 
 import argparse
 import errno
 import os
+import re
 import shutil
 import struct
 import subprocess
@@ -32,19 +35,7 @@ from pathlib import Path
 SCRIPT_DIR = Path(__file__).resolve().parent
 CONF_FILE = SCRIPT_DIR / "speechflow.conf"
 
-# Einzelsprach-Modelle (gated, CC BY-NC 4.0 – HF-Login nötig)
-MODEL_BY_LANG = {
-    "de": "hf://gradium/phonon-40m-de",
-    "en": "hf://gradium/phonon-40m-en",
-    "fr": "hf://gradium/phonon-40m-fr",
-    "es": "hf://gradium/phonon-40m-es",
-    "pt": "hf://gradium/phonon-40m-pt",
-}
-# Alternative: ein Modell für alle 5 Sprachen (in speechflow.conf einstellen):
-#   MODEL=hf://gradium/phonon-40m-multilingual
-
 DEFAULTS = {
-    "LANG": "de",
     "MODEL": "",
     "VOICE": "",
     "QUANT": "q8",
@@ -53,17 +44,54 @@ DEFAULTS = {
 
 
 def load_conf():
-    """liest speechflow.conf (KEY=VALUE); fehlt sie, gelten die DEFAULTS."""
+    """liest speechflow.conf (KEY=VALUE); fehlt sie, gelten die DEFAULTS.
+
+    MODEL und VOICE dürfen mehrfach aktiv vorkommen – alle aktiven
+    Einträge werden gesammelt (cfg["MODELS"]/cfg["VOICES"]).
+    """
     cfg = dict(DEFAULTS)
+    cfg["MODELS"] = []
+    cfg["VOICES"] = []
     if CONF_FILE.exists():
         for line in CONF_FILE.read_text(encoding="utf-8").splitlines():
             line = line.strip()
             if not line or line.startswith("#") or "=" not in line:
                 continue
             key, val = (p.strip() for p in line.split("=", 1))
-            if key in cfg:
+            if not val:
+                continue
+            if key == "MODEL":
+                cfg["MODELS"].append(val)
+                cfg["MODEL"] = val
+            elif key == "VOICE":
+                cfg["VOICES"].append(val)
+                cfg["VOICE"] = val
+            elif key in cfg:
                 cfg[key] = val
     return cfg
+
+
+def last_active(values, plural, key):
+    """Bei mehreren aktiven Einträgen warnen und den letzten verwenden."""
+    if len(values) <= 1:
+        return values[0] if values else ""
+    print(f"\n⚠️  Achtung: {len(values)} {plural} aktiv in speechflow.conf:")
+    for v in values:
+        print(f"      - {v}")
+    print(f"   → Not-Fallback: es läuft weiter mit dem letzten: {values[-1]}")
+    print("   Entferne die Raute (#) vor allen anderen Zeilen, damit genau "
+          f"EINE {key}-Zeile aktiv ist.\n")
+    notify(f"Mehrere {plural} aktiv ({', '.join(values)}) – "
+           f"weiter mit: {values[-1]}. In speechflow.conf nur EINE "
+           f"{key}-Zeile aktiv lassen.")
+    return values[-1]
+
+
+def lang_from_model(model):
+    """Modellname -> Sprachcode, z.B. hf://gradium/phonon-40m-de -> 'de'."""
+    name = model.rstrip("/").split("/")[-1].split("@")[0]
+    m = re.search(r"-([a-z]{2})$", name)
+    return m.group(1) if m else None
 
 
 def read_clipboard():
@@ -153,11 +181,9 @@ def parse_args():
         description="Text offline vorlesen (Phonon TTS, über uv run).")
     p.add_argument("text", nargs="?",
                    help="Vorzulesender Text (Standard: Zwischenablage)")
-    p.add_argument("--lang", choices=sorted(MODEL_BY_LANG),
-                   help="Sprache (überschreibt LANG aus der conf)")
     p.add_argument("--model", metavar="REPO",
                    help="Modell überschreiben, z.B. "
-                        "hf://gradium/phonon-40m-multilingual")
+                        "hf://gradium/phonon-40m-en")
     p.add_argument("--voice", metavar="NAME",
                    help="Stimme, z.B. Nele (leerer String = Modell-Standard)")
     p.add_argument("--no-mpv", action="store_true",
@@ -265,22 +291,21 @@ def main():
     cfg = load_conf()
     text = resolve_text(args)
 
-    lang = args.lang or cfg["LANG"]
-    model = args.model or cfg["MODEL"] or MODEL_BY_LANG.get(lang)
+    model = args.model or last_active(cfg["MODELS"], "Modelle", "MODEL")
     if not model:
-        print(f"FEHLER: unbekannte Sprache {lang!r} und kein MODEL gesetzt. "
-              f"Verfügbar: {', '.join(sorted(MODEL_BY_LANG))}",
+        print("FEHLER: kein MODEL in speechflow.conf aktiv "
+              "(Raute vor EINER MODEL-Zeile entfernen).",
               file=sys.stderr)
+        sys.exit(1)
+    lang = lang_from_model(model)
+    if not lang:
+        print(f"FEHLER: Sprache aus Modellname {model!r} nicht ableitbar "
+              "(z.B. ...-de, ...-en).", file=sys.stderr)
         sys.exit(1)
     if args.voice is not None:
         voice = args.voice or None      # --voice "" = Modell-Standard
     else:
-        voice = cfg["VOICE"] or None
-        if voice and args.lang and args.lang != cfg["LANG"]:
-            print(f"Hinweis: Stimme {voice!r} stammt aus der conf und ist "
-                  f"für Sprache {args.lang!r} evtl. nicht passend. "
-                  f"Besser: --voice NAME oder VOICE= leer lassen.",
-                  file=sys.stderr)
+        voice = last_active(cfg["VOICES"], "Stimmen", "VOICE") or None
 
     archive_dir = Path(cfg["ARCHIVE_DIR"]).expanduser()
     archive_dir.mkdir(parents=True, exist_ok=True)

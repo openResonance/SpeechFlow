@@ -17,7 +17,7 @@ jederzeit nachhörbar.
   Abhängigkeiten zum Pflegen. [uv](https://docs.astral.sh/uv/) führt sie
   aus und holt sich alles selbst, genau wie `uvx`.
 - **5 Sprachen** – Deutsch, Englisch, Französisch, Spanisch, Portugiesisch
-  (Einzelmodelle oder ein multilinguales Modell).
+  (ein Modell pro Sprache; die Sprache kommt aus dem Modellnamen).
 - **Archiv inklusive** – jeder Lauf hinterlegt eine WAV mit Zeitstempel in
   `~/text-to-sound-recordings/`.
 
@@ -104,21 +104,26 @@ Oder die Helfer nutzen: `./start.sh` (Terminal) · `START-HERE.txt`
 
 ## Alle Sprachen
 
-```bash
-uv run speechflow-start.py --lang en        # Englisch
-uv run speechflow-start.py --lang fr        # Französisch
-uv run speechflow-start.py --lang es        # Spanisch
-uv run speechflow-start.py --lang pt        # Portugiesisch
-uv run speechflow-start.py --lang de        # Deutsch (Standard)
-```
-
-Je Sprache lädt `speechflow-start.py` das passende Modell
-(`hf://gradium/phonon-40m-<lang>`). Alternativ **ein Modell für alle
-fünf Sprachen** – in `speechflow.conf` einstellen:
+Die Sprache wird **automatisch aus dem Modellnamen abgeleitet** – keine
+Spracheinstellung nötig. In `speechflow.conf` genau EIN Modell aktivieren
+(Raute entfernen):
 
 ```ini
-MODEL=hf://gradium/phonon-40m-multilingual
+MODEL=hf://gradium/phonon-40m-de    # Deutsch
+#MODEL=hf://gradium/phonon-40m-en   # Englisch
+#MODEL=hf://gradium/phonon-40m-fr   # Französisch
+#MODEL=hf://gradium/phonon-40m-es   # Spanisch
+#MODEL=hf://gradium/phonon-40m-pt   # Portugiesisch
 ```
+
+`phonon-40m-en` → `en`, `phonon-40m-fr` → `fr` und so weiter – der
+Archivdateiname verwendet denselben Code (`…_en.wav`).
+
+> **Ein Modell = eine Sprache.** Ein Modell deckt genau eine Sprache ab
+> (ein Modell für alle fünf Sprachen funktionierte zuverlässig nicht und
+> wird deshalb nicht angeboten). Sprache wechseln = andere `MODEL=`-Zeile
+> aktivieren – jedes neu aktivierte Modell braucht einmalig die
+> Lizenz-Freigabe (siehe oben).
 
 Weitere Sprachen (Arabisch, Hindi, Japanisch …) stehen in der
 [Modell-Übersicht von gradium](https://github.com/gradium-ai/xn-ptts#model-setup) –
@@ -141,12 +146,16 @@ oder pro Aufruf: `uv run speechflow-start.py --voice Harper "Hallo dort."`
 **Die Stimme muss zur Sprache passen** – deutsche Stimmen lesen
 französischen Text nicht sauber.
 
+> **Höchstens EINE `VOICE=`-Zeile aktiv** (oder keine = Modell-Standard).
+> Sind mehrere Zeilen aktiv, warnt SpeechFlow und läuft mit der
+> **letzten aktiven** Zeile weiter.
+
 ## Weitere Optionen
 
 ```bash
 uv run speechflow-start.py "Direkt mit Text starten"   # statt Zwischenablage
 uv run speechflow-start.py --no-mpv                     # nur archivieren, nicht abspielen
-uv run speechflow-start.py --model hf://gradium/phonon-31m-en --lang en
+uv run speechflow-start.py --model hf://gradium/phonon-31m-en   # ungatedes Englisch-Modell
 ```
 
 Tastaturkürzel in mpv funktionieren normal (Pause mit Leertaste,
@@ -159,10 +168,15 @@ mpv ~/text-to-sound-recordings/2026-11-07_00-09-11_de.wav
 
 ## Konfiguration (`speechflow.conf`)
 
+Die Config arbeitet mit Raute-Kommentaren: **genau EINE `MODEL=`-Zeile
+und höchstens EINE `VOICE=`-Zeile aktivieren (Raute entfernen)**, alles
+andere bleibt auskommentiert. Sind mehrere `MODEL=`- oder
+`VOICE=`-Zeilen aktiv, gibt SpeechFlow eine Warnung aus und arbeitet mit
+dem **letzten aktiven Eintrag** weiter.
+
 | Schlüssel | Standard | Bedeutung |
 |---|---|---|
-| `LANG` | `de` | Sprache (auch Normalisierung von Zahlen/Daten) |
-| `MODEL` | leer | leer = Standardmodell der Sprache, z. B. `hf://gradium/phonon-40m-multilingual` |
+| `MODEL` | `hf://gradium/phonon-40m-de` | das Modell – bestimmt auch die Sprache |
 | `VOICE` | leer | leer = passende Standardstimme des Modells |
 | `QUANT` | `q8` | `q8` (klein/schnell) oder `f32` (genauer) |
 | `ARCHIVE_DIR` | `~/text-to-sound-recordings` | Ordner für die WAV-Archivdateien |
@@ -213,8 +227,8 @@ Der Code in diesem Repository ist **MIT OR Apache-2.0**, nach Wahl
 (siehe [NOTICE](NOTICE)).
 
 **Modellgewichte und Stimmen werden separat verteilt und haben eigene
-Bedingungen.** Phonon 31m steht unter Apache 2.0, Phonon 40m und
-Phonon 40m multilingual unter CC BY-NC 4.0 (nur nicht-kommerziell).
+Bedingungen.** Phonon 31m steht unter Apache 2.0, die Phonon-40m-Modelle
+unter CC BY-NC 4.0 (nur nicht-kommerziell).
 Vor jeder Weiterverteilung die jeweilige Modellseite auf Hugging Face
 prüfen. Details: [gradium-ai/xn-ptts](https://github.com/gradium-ai/xn-ptts#license).
 

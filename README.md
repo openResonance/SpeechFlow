@@ -16,7 +16,7 @@ file is written to disk — every recording stays available for later.
   tree to maintain. [uv](https://docs.astral.sh/uv/) runs it and fetches
   what it needs, exactly like `uvx`.
 - **5 languages** — German, English, French, Spanish, Portuguese
-  (separate models, or one multilingual model).
+  (one model per language; the language comes from the model name).
 - **Archive included** — every run leaves a timestamped WAV in
   `~/text-to-sound-recordings/`.
 
@@ -102,22 +102,27 @@ desktop entry below (one click).
 
 ## Languages
 
-```bash
-uv run speechflow-start.py --lang en        # English
-uv run speechflow-start.py --lang fr        # French
-uv run speechflow-start.py --lang es        # Spanish
-uv run speechflow-start.py --lang pt        # Portuguese
-uv run speechflow-start.py --lang de        # German (default)
-```
-
-Each language loads its matching model (`hf://gradium/phonon-40m-<lang>`).
-Prefer **one model for all five languages** — set in `speechflow.conf`:
+The language is **derived from the model name** — no language setting
+needed. Uncomment exactly one model in `speechflow.conf`:
 
 ```ini
-MODEL=hf://gradium/phonon-40m-multilingual
+MODEL=hf://gradium/phonon-40m-de    # German
+#MODEL=hf://gradium/phonon-40m-en   # English
+#MODEL=hf://gradium/phonon-40m-fr   # French
+#MODEL=hf://gradium/phonon-40m-es   # Spanish
+#MODEL=hf://gradium/phonon-40m-pt   # Portuguese
 ```
 
-More languages (Arabic, Hindi, Japanese, …) are listed in gradium's
+`phonon-40m-en` → `en`, `phonon-40m-fr` → `fr`, and so on — the archive
+filename uses the same code (`…_en.wav`).
+
+> **One model = one language.** A single model covers exactly one
+> language (the model that would handle all five at once did not work
+> reliably and is therefore not offered). Switch languages by
+> uncommenting a different `MODEL=` line — each model you activate for
+> the first time needs its own license acceptance (see above).
+
+Other languages (Arabic, Hindi, Japanese, …) are listed in gradium's
 [model overview](https://github.com/gradium-ai/xn-ptts#model-setup) —
 pass any of them via `--model hf://…`.
 
@@ -138,12 +143,16 @@ or per run: `uv run speechflow-start.py --voice Harper "Hello there."`
 **Pick a voice that matches the language** — German voices read French
 text poorly.
 
+> **Exactly one `VOICE=` line active at most** (or none = model default).
+> If several are uncommented, SpeechFlow warns you and keeps going with
+> the **last active** line.
+
 ## More options
 
 ```bash
 uv run speechflow-start.py "Start with text directly"   # instead of clipboard
 uv run speechflow-start.py --no-mpv                     # only archive, no playback
-uv run speechflow-start.py --model hf://gradium/phonon-31m-en --lang en
+uv run speechflow-start.py --model hf://gradium/phonon-31m-en   # ungated English model
 ```
 
 mpv keyboard shortcuts work as usual (pause with Space, quit with `q`).
@@ -155,10 +164,14 @@ mpv ~/text-to-sound-recordings/2026-11-07_00-09-11_de.wav
 
 ## Configuration (`speechflow.conf`)
 
+The config is hashtag-style: **uncomment (remove `#`) exactly one
+`MODEL=` line and at most one `VOICE=` line.** Everything else stays
+commented. If several `MODEL=` or `VOICE=` lines are active, SpeechFlow
+prints a warning and continues with the **last active** entry.
+
 | Key | Default | Meaning |
 |---|---|---|
-| `LANG` | `de` | language (also normalizes numbers/dates) |
-| `MODEL` | empty | empty = default model of `LANG`, e.g. `hf://gradium/phonon-40m-multilingual` |
+| `MODEL` | `hf://gradium/phonon-40m-de` | the model — also determines the language |
 | `VOICE` | empty | empty = model's default voice for the language |
 | `QUANT` | `q8` | `q8` (small/fast) or `f32` (more precise) |
 | `ARCHIVE_DIR` | `~/text-to-sound-recordings` | folder for the WAV archive files |
@@ -210,8 +223,8 @@ The code in this repository is **MIT OR Apache-2.0**, at your option
 (see [NOTICE](NOTICE)).
 
 **Model weights and voices are distributed separately and have their own
-terms.** Phonon 31m is under Apache 2.0, and Phonon 40m and Phonon 40m
-multilingual are under CC BY-NC 4.0 (non-commercial use only). Check each
+terms.** Phonon 31m is under Apache 2.0, and the Phonon 40m models are
+under CC BY-NC 4.0 (non-commercial use only). Check each
 model's page on Hugging Face before redistribution. Details:
 [gradium-ai/xn-ptts](https://github.com/gradium-ai/xn-ptts#license).
 
