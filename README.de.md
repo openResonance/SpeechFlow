@@ -210,7 +210,7 @@ Bewusste Entscheidungen:
 ## Lizenz
 
 Der Code in diesem Repository ist **MIT OR Apache-2.0**, nach Wahl
-(see [LICENSE](LICENSE)).
+(siehe [NOTICE](NOTICE)).
 
 **Modellgewichte und Stimmen werden separat verteilt und haben eigene
 Bedingungen.** Phonon 31m steht unter Apache 2.0, Phonon 40m und

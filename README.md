@@ -207,7 +207,7 @@ Design decisions, for transparency:
 ## License
 
 The code in this repository is **MIT OR Apache-2.0**, at your option
-(see [LICENSE](LICENSE)).
+(see [NOTICE](NOTICE)).
 
 **Model weights and voices are distributed separately and have their own
 terms.** Phonon 31m is under Apache 2.0, and Phonon 40m and Phonon 40m
